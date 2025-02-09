@@ -1,4 +1,4 @@
-import { Injectable, Inject, forwardRef, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Account } from './account.model';
 import { UsersService } from 'src/users/users.service';
 
@@ -10,7 +10,7 @@ export class AccountsService {
     @Inject(forwardRef(() => UsersService)) // ✅ Fix circular dependency
     private readonly usersService: UsersService,
   ) {}
-  
+
   async createAccount(userId: number, accountType: 'savings' | 'checking' | 'business'): Promise<Account> {
 
     // Validate user existence
@@ -28,6 +28,27 @@ export class AccountsService {
     };
     this.accounts.push(newAccount);
     return newAccount;
+  }
+
+  async addFunds(userId: number, amount: number): Promise<Account> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const account = await this.getAccountById(userId);
+    if (!account) {
+        throw new NotFoundException('Account not found');
+    }
+
+    if (amount <= 0) {
+        throw new BadRequestException('Deposit amount must be greater than zero');
+    }
+
+    // Add funds to the account balance
+    account.balance += amount;
+
+    return account;
   }
 
   async getAccountById(accountId: number): Promise<Account> {

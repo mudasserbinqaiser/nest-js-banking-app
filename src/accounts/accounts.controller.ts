@@ -15,6 +15,14 @@ export class AccountsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('add-funds')
+  async addFunds(
+    @Body() addFundsDto: { userId: string; amount: number},
+  ) {
+    return this.accountsService.addFunds(+addFundsDto.userId, addFundsDto.amount);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async getAccountById(@Param('id') id: number) {
     return this.accountsService.getAccountById(+id);
