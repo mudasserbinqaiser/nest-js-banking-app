@@ -12,6 +12,7 @@ export class AuthService {
         private readonly JwtService: JwtService,
     ){}
 
+    // use DTO here.
     async validateUser(email:string, password:string): Promise<any> {
         const user = await this.userService.findByEmail(email);
         if (user && (await bcrypt.compare(password, user.password))) {
