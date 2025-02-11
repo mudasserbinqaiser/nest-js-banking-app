@@ -1,6 +1,8 @@
-import { Controller, Post, Get, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { AccountsService } from './accounts.service';
 import { JwtAuthGuard } from 'src/auth/guards/auth.guard';
+import { CreateAccountDto } from './dto/create-account.dto';
+import { AddFundsDto } from './dto/add-funds.dto';
 
 @Controller('accounts')
 export class AccountsController {
@@ -9,20 +11,28 @@ export class AccountsController {
   @UseGuards(JwtAuthGuard)
   @Post('create')
   async createAccount(
-    @Body() createAccountDto: { userId: string; type: 'savings' | 'checking' | 'business' },
+    @Body() createAccountDto: CreateAccountDto,
   ) {
-    return this.accountsService.createAccount(+createAccountDto.userId, createAccountDto.type);
+    return this.accountsService.createAccount(createAccountDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('add-funds')
+  async addFunds(
+    @Body() addFundsDto: AddFundsDto,
+  ) {
+    return this.accountsService.addFunds(addFundsDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  async getAccountById(@Param('id') id: number) {
-    return this.accountsService.getAccountById(+id);
+  async getAccountById(@Param('id', ParseIntPipe) id: number) {
+    return this.accountsService.getAccountById(id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('user/:userId')
-  async getAccountsByUserId(@Param('userId') userId: string) {
-    return this.accountsService.getAccountsByUserId(+userId);
+  async getAccountsByUserId(@Param('userId', ParseIntPipe) userId: number) {
+    return this.accountsService.getAccountsByUserId(userId);
   }
 }
