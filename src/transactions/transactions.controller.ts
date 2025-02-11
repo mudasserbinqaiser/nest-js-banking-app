@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, ParseIntPipe } from '@nestjs/common';
 import { TransactionsService } from './transactions.service';
 import { JwtAuthGuard } from 'src/auth/guards/auth.guard';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -16,13 +16,13 @@ export class TransactionsController {
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  async getTransactionById(@Param('id') id: number): Promise<TransactionResponseDto> {
-    return this.transactionsService.getTransactionById(+id);
+  async getTransactionById(@Param('id', ParseIntPipe) id: number): Promise<TransactionResponseDto> {
+    return this.transactionsService.getTransactionById(id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('account/:accountId')
-  async getTransactionsByAccountId(@Param('accountId') accountId: number): Promise<TransactionResponseDto[]> {
-    return this.transactionsService.getTransactionsByAccountId(+accountId);
+  async getTransactionsByAccountId(@Param('accountId', ParseIntPipe) accountId: number): Promise<TransactionResponseDto[]> {
+    return this.transactionsService.getTransactionsByAccountId(accountId);
   }
 }

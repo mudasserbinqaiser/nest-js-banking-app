@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, forwardRef, InternalServerErrorException } from '@nestjs/common';
 import { Transaction } from './transaction.model';
 import { AccountsService } from '../accounts/accounts.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -14,43 +14,46 @@ export class TransactionsService {
   ) {}
 
   async transferFunds(transferDto: CreateTransactionDto): Promise<TransactionResponseDto> {
-    const { fromAccountId, toAccountId, amount } = transferDto;
+    try {
+      const { fromAccountId, toAccountId, amount } = transferDto;
 
-    if (amount <= 0) {
-      throw new BadRequestException('Amount must be greater than zero');
+      if (amount <= 0) {
+        throw new BadRequestException('Amount must be greater than zero');
+      }
+
+      const fromAccount = await this.accountsService.getAccountById(fromAccountId);
+      const toAccount = await this.accountsService.getAccountById(toAccountId);
+
+      if (!fromAccount || !toAccount) {
+        throw new NotFoundException('One or both accounts not found');
+      }
+
+      if (fromAccount.balance < amount) {
+        throw new BadRequestException('Insufficient funds');
+      }
+
+      // Deduct from sender
+      fromAccount.balance -= amount;
+
+      // Credit to receiver
+      toAccount.balance += amount;
+
+      // Record the transaction
+      const newTransaction: Transaction = {
+        id: this.transactions.length + 1,
+        fromAccountId,
+        toAccountId,
+        amount,
+        timestamp: new Date(),
+        status: 'completed',
+      };
+
+      this.transactions.push(newTransaction);
+
+      return this.toTransactionResponseDto(newTransaction);
+    } catch (error) {
+      throw new InternalServerErrorException(error.message || 'An error occurred during the transaction');
     }
-
-    const fromAccount = await this.accountsService.getAccountById(fromAccountId);
-    const toAccount = await this.accountsService.getAccountById(toAccountId);
-
-    if (!fromAccount || !toAccount) {
-      throw new NotFoundException('One or both accounts not found');
-    }
-
-    if (fromAccount.balance < amount) {
-      throw new BadRequestException('Insufficient funds');
-    }
-
-    // Deduct from sender
-    fromAccount.balance -= amount;
-
-    // Credit to receiver
-    toAccount.balance += amount;
-
-    // Record the transaction
-    const newTransaction: Transaction = {
-      id: this.transactions.length + 1,
-      fromAccountId,
-      toAccountId,
-      amount,
-      timestamp: new Date(),
-      status: 'completed',
-    };
-
-    this.transactions.push(newTransaction);
-
-    // Return transaction response DTO
-    return this.toTransactionResponseDto(newTransaction);
   }
 
   async getTransactionById(transactionId: number): Promise<TransactionResponseDto> {
@@ -62,9 +65,13 @@ export class TransactionsService {
   }
 
   async getTransactionsByAccountId(accountId: number): Promise<TransactionResponseDto[]> {
-    return this.transactions
-      .filter((tx) => tx.fromAccountId === accountId || tx.toAccountId === accountId)
-      .map((tx) => this.toTransactionResponseDto(tx));
+    try {
+      return this.transactions
+        .filter((tx) => tx.fromAccountId === accountId || tx.toAccountId === accountId)
+        .map((tx) => this.toTransactionResponseDto(tx));
+    } catch (error) {
+      throw new InternalServerErrorException(error.message || 'An error occurred during the transaction');
+    }
   }
 
   private toTransactionResponseDto(transaction: Transaction): TransactionResponseDto {

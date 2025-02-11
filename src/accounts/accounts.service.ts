@@ -1,6 +1,8 @@
-import { Injectable, Inject, forwardRef, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { Account } from './account.model';
 import { UsersService } from 'src/users/users.service';
+import { CreateAccountDto } from './dto/create-account.dto';
+import { AddFundsDto } from './dto/add-funds.dto';
 
 @Injectable()
 export class AccountsService {
@@ -11,26 +13,35 @@ export class AccountsService {
     private readonly usersService: UsersService,
   ) {}
 
-  async createAccount(userId: number, accountType: 'savings' | 'checking' | 'business'): Promise<Account> {
+  async createAccount(createAccountDto: CreateAccountDto): Promise<Account> {
 
-    // Validate user existence
-    const user = await this.usersService.findById(userId);
-    if (!user) {
-      throw new NotFoundException('User not found');
+    try {
+      const { userId, type } = createAccountDto;
+      // Validate user existence
+      const user = await this.usersService.findById(userId);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+  
+      const newAccount: Account = {
+        id: this.accounts.length + 1,
+        accountNumber: this.generateAccountNumber(),
+        balance: 0, // New accounts start with a balance of 0
+        type: type,
+        userId,
+      };
+      this.accounts.push(newAccount);
+      return newAccount;
+
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error.message || 'An error occurred while creating the account'
+      );
     }
-
-    const newAccount: Account = {
-      id: this.accounts.length + 1,
-      accountNumber: this.generateAccountNumber(),
-      balance: 0, // New accounts start with a balance of 0
-      type: accountType,
-      userId,
-    };
-    this.accounts.push(newAccount);
-    return newAccount;
   }
 
-  async addFunds(userId: number, amount: number): Promise<Account> {
+  async addFunds(addFundsDto: AddFundsDto): Promise<Account> {
+    const {userId, amount} = addFundsDto
     const user = await this.usersService.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');

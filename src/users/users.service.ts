@@ -4,6 +4,7 @@ import { User } from './user.model';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AccountsService } from 'src/accounts/accounts.service';
+import { CreateAccountDto } from 'src/accounts/dto/create-account.dto';
 
 
 @Injectable()
@@ -16,7 +17,12 @@ export class UsersService {
   ) {}
 
   async findByEmail(email: string): Promise<User | undefined> {
-    return this.users.find((user) => user.email === email);
+    
+    try {
+      return this.users.find((user) => user.email === email);
+    } catch (error) {
+      throw new NotFoundException(error)
+    }
   }
 
   async findById(id: number): Promise<User | undefined> {
@@ -43,9 +49,13 @@ export class UsersService {
 
     this.users.push(newUser);
 
+    
     // Automatically create an account for customers
     if (role === 'customer') {
-      await this.accountsService.createAccount(newUser.id, 'savings');
+      const createAccountDto = new CreateAccountDto
+      createAccountDto.userId = newUser.id
+      createAccountDto.type = 'savings'
+      await this.accountsService.createAccount(createAccountDto);
     }
 
     return this.excludePassword(newUser);
