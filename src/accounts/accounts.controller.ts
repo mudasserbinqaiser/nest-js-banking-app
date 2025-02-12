@@ -3,12 +3,15 @@ import { AccountsService } from './accounts.service';
 import { JwtAuthGuard } from 'src/auth/guards/auth.guard';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { AddFundsDto } from './dto/add-funds.dto';
+import { RolesGuard } from 'src/security/gaurds/roles.guard';
+import { Roles } from 'src/security/decorators/roles.decorators';
 
 @Controller('accounts')
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AccountsController {
   constructor(private readonly accountsService: AccountsService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @Roles('admin', 'banker')
   @Post('create')
   async createAccount(
     @Body() createAccountDto: CreateAccountDto,
@@ -16,7 +19,7 @@ export class AccountsController {
     return this.accountsService.createAccount(createAccountDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Roles('admin', 'banker')
   @Post('add-funds')
   async addFunds(
     @Body() addFundsDto: AddFundsDto,
@@ -24,13 +27,13 @@ export class AccountsController {
     return this.accountsService.addFunds(addFundsDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Roles('admin', 'banker')
   @Get(':id')
   async getAccountById(@Param('id', ParseIntPipe) id: number) {
     return this.accountsService.getAccountById(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @Roles('admin', 'banker')
   @Get('user/:userId')
   async getAccountsByUserId(@Param('userId', ParseIntPipe) userId: number) {
     return this.accountsService.getAccountsByUserId(userId);
