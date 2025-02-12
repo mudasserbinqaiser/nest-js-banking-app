@@ -3,6 +3,7 @@ import { Transaction } from './transaction.model';
 import { AccountsService } from '../accounts/accounts.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionResponseDto } from './dto/transaction-response.dto';
+import { LoggingService } from 'src/logging/logging.service';
 
 @Injectable()
 export class TransactionsService {
@@ -11,13 +12,21 @@ export class TransactionsService {
   constructor(
     @Inject(forwardRef(() => AccountsService)) // Inject AccountsService to access accounts
     private readonly accountsService: AccountsService,
+    private readonly loggingService: LoggingService,
+
   ) {}
 
   async transferFunds(transferDto: CreateTransactionDto): Promise<TransactionResponseDto> {
     try {
       const { fromAccountId, toAccountId, amount } = transferDto;
 
+      this.loggingService.log(
+        `Initiating transfer of ${amount} from ${fromAccountId} to ${toAccountId}`,
+        'TransactionsService',
+      );
+
       if (amount <= 0) {
+        this.loggingService.warn(`Invalid transfer amount: ${amount}`, 'TransactionsService');
         throw new BadRequestException('Amount must be greater than zero');
       }
 
@@ -25,10 +34,12 @@ export class TransactionsService {
       const toAccount = await this.accountsService.getAccountById(toAccountId);
 
       if (!fromAccount || !toAccount) {
+        this.loggingService.warn(`Invalid account(s) involved in transfer`, 'TransactionsService');
         throw new NotFoundException('One or both accounts not found');
       }
 
       if (fromAccount.balance < amount) {
+        this.loggingService.warn(`Insufficient funds for transfer from account ${fromAccountId}`, 'TransactionsService');
         throw new BadRequestException('Insufficient funds');
       }
 
@@ -49,6 +60,11 @@ export class TransactionsService {
       };
 
       this.transactions.push(newTransaction);
+
+      this.loggingService.log(
+        `Transfer was successful: ${amount} from ${fromAccountId} to ${toAccountId}`,
+        'TransactionsService',
+      );
 
       return this.toTransactionResponseDto(newTransaction);
     } catch (error) {

@@ -1,10 +1,11 @@
-import { Injectable, Inject, forwardRef, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, NotFoundException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { User } from './user.model';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AccountsService } from 'src/accounts/accounts.service';
 import { CreateAccountDto } from 'src/accounts/dto/create-account.dto';
+import { LoggingService } from 'src/logging/logging.service';
 
 
 @Injectable()
@@ -13,7 +14,9 @@ export class UsersService {
 
   constructor(
     @Inject(forwardRef(() => AccountsService)) // ✅ Fix circular dependency
-    private readonly accountsService: AccountsService
+    private readonly accountsService: AccountsService,
+    private readonly loggingService: LoggingService,
+
   ) {}
 
   async findByEmail(email: string): Promise<User | undefined> {
@@ -31,11 +34,17 @@ export class UsersService {
 
   async createUser(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
     const { email, password, name, role } = createUserDto;
+    this.loggingService.log(`Creating new user: ${email}`, 'UsersService');
 
-    // Check if user already exists
-    const existingUser = await this.findByEmail(email);
-    if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+    try {
+      // Check if user already exists
+      const existingUser = await this.findByEmail(email);
+      if (existingUser) {
+        this.loggingService.warn(`Attempted to create duplicate user: ${email}`, 'UsersService');
+        throw new ConflictException('User with this email already exists');
+      }
+    } catch (error) {
+      if (!(error instanceof NotFoundException)) throw error;
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -45,30 +54,47 @@ export class UsersService {
       password: hashedPassword,
       name,
       role,
+      requiresTwoFactorAuth: false,
+      isTwoFactorAuthenticated: false,
     };
 
     this.users.push(newUser);
+    this.loggingService.log(`User created successfully: ${email}`, 'UsersService');
 
-    
     // Automatically create an account for customers
     if (role === 'customer') {
-      const createAccountDto = new CreateAccountDto
-      createAccountDto.userId = newUser.id
-      createAccountDto.type = 'savings'
-      await this.accountsService.createAccount(createAccountDto);
+      this.loggingService.log(`Creating default savings account for ${email}`, 'UsersService');
+
+      try {
+        const createAccountDto = new CreateAccountDto();
+        createAccountDto.userId = newUser.id;
+        createAccountDto.type = 'savings';
+        await this.accountsService.createAccount(createAccountDto);
+        this.loggingService.log(`Default savings account created for ${email}`, 'UsersService');
+      } catch (error) {
+        this.loggingService.error(`Failed to create default account for ${email}: ${error.message}`, error.stack, 'UsersService');
+        throw new InternalServerErrorException('Failed to create default savings account');
+      }
     }
 
     return this.excludePassword(newUser);
   }
 
   async updateUser(id: number, updateUserDto: UpdateUserDto): Promise<Omit<User, 'password'>> {
-    const user = await this.findById(id);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    try {
+      const user = await this.findById(id);
+      if (!user) {
+        this.loggingService.warn(`Attempted to update non-existent user ID: ${id}`, 'UsersService');
+        throw new NotFoundException('User not found');
+      }
 
-    user.name = updateUserDto.name;
-    return this.excludePassword(user);
+      user.name = updateUserDto.name;
+      this.loggingService.log(`User ${id} updated successfully`, 'UsersService');
+      return this.excludePassword(user);
+    } catch (error) {
+      this.loggingService.error(`Error updating user: ${error.message}`, error.stack, 'UsersService');
+      throw new InternalServerErrorException(error.message || 'An error occurred while updating user');
+    }
   }
 
   async getAllUsers(): Promise<Omit<User, 'password'>[]> {
