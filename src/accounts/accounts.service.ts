@@ -40,7 +40,8 @@ export class AccountsService {
         accountNumber: this.generateAccountNumber(),
         balance: 0, // New accounts start with a balance of 0
         type: type,
-        userId,
+        userId: userId,
+        isSuspended: false,
       };
       this.accounts.push(newAccount);
       this.loggingService.log(`Account created successfully for user ${userId}`, 'AccountsService');
@@ -62,10 +63,20 @@ export class AccountsService {
       throw new NotFoundException('User not found');
     }
 
+    if (user.isBanned) {
+      this.loggingService.warn(`Banned user ${userId} attempted to add funds`, 'AccountsService');
+      throw new BadRequestException('User is banned from performing transactions');
+    }
+
     const account = this.accounts.find((acc) => acc.userId === userId);
     if (!account) {
       this.loggingService.warn(`Account for user ${userId} not found`, 'AccountsService');
       throw new NotFoundException('Account not found');
+    }
+
+    if (account.isSuspended) {
+      this.loggingService.warn(`Suspended account ${account.id} attempted to add funds`, 'AccountsService');
+      throw new BadRequestException('This account is suspended');
     }
 
     if (amount <= 0) {

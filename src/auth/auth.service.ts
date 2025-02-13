@@ -19,11 +19,23 @@ export class AuthService {
     async validateUser(loginDto: LoginInDto): Promise<UserResponseDto> {
         const {email, password} = loginDto
         const user = await this.userService.findByEmail(email);
-        if (user && (await bcrypt.compare(password, user.password))) {  //clean code
+
+        if (!user) {
+            this.loggingService.warn(`Login attempt with non-existent email: ${email}`, 'AuthService');
+            throw new UnauthorizedException('Invalid credentials');
+        }
+
+        if (user.isBanned) {
+            this.loggingService.warn(`Banned user ${email} attempted to log in`, 'AuthService');
+            throw new UnauthorizedException('This account has been banned');
+        }
+
+        if (await bcrypt.compare(password, user.password)) {
             this.loggingService.log(`User ${email} successfully validated`, 'AuthService');
             const { password, ...userData } = user;
-            return userData as UserResponseDto
+            return userData as UserResponseDto;
         }
+        
         this.loggingService.warn(`Invalid login attempt for ${email}`, 'AuthService');
         throw new UnauthorizedException('Invalid credentials');
     }
