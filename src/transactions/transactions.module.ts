@@ -8,5 +8,6 @@ import { LoggingModule } from 'src/logging/logging.module';
   imports: [forwardRef(() => AccountsModule), LoggingModule], // ✅ Import AccountsModule
   providers: [TransactionsService],
   controllers: [TransactionsController],
+  exports: [TransactionsService],
 })
 export class TransactionsModule {}

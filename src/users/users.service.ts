@@ -56,6 +56,7 @@ export class UsersService {
       role,
       requiresTwoFactorAuth: false,
       isTwoFactorAuthenticated: false,
+      isBanned: false,
     };
 
     this.users.push(newUser);

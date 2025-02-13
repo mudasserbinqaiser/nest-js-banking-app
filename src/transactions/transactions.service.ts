@@ -38,6 +38,16 @@ export class TransactionsService {
         throw new NotFoundException('One or both accounts not found');
       }
 
+      if (fromAccount.isSuspended) {
+        this.loggingService.warn(`Suspended account ${fromAccountId} attempted a transfer`, 'TransactionsService');
+        throw new BadRequestException('Sender account is suspended');
+      }
+
+      if (toAccount.isSuspended) {
+        this.loggingService.warn(`Transfer to a suspended account ${toAccountId} attempted`, 'TransactionsService');
+        throw new BadRequestException('Recipient account is suspended');
+      }
+
       if (fromAccount.balance < amount) {
         this.loggingService.warn(`Insufficient funds for transfer from account ${fromAccountId}`, 'TransactionsService');
         throw new BadRequestException('Insufficient funds');
@@ -89,6 +99,23 @@ export class TransactionsService {
       throw new InternalServerErrorException(error.message || 'An error occurred during the transaction');
     }
   }
+
+  async getAllTransactions(): Promise<TransactionResponseDto[]> {
+    try {
+      this.loggingService.log('Fetching all transactions', 'TransactionsService');
+  
+      if (this.transactions.length === 0) {
+        this.loggingService.warn('No transactions found', 'TransactionsService');
+        throw new NotFoundException('No transactions found');
+      }
+  
+      return this.transactions.map((tx) => this.toTransactionResponseDto(tx));
+    } catch (error) {
+      this.loggingService.error(`Error fetching transactions: ${error.message}`, error.stack, 'TransactionsService');
+      throw new InternalServerErrorException('An error occurred while fetching transactions');
+    }
+  }
+  
 
   private toTransactionResponseDto(transaction: Transaction): TransactionResponseDto {
     return {
