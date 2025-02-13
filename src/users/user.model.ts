@@ -6,5 +6,6 @@ export class User {
     role: 'customer' | 'admin' | 'banker';
     requiresTwoFactorAuth?: boolean;
     isTwoFactorAuthenticated?: boolean;
+    isBanned?: boolean;
   }
   
