@@ -6,6 +6,9 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { AccountsService } from 'src/accounts/accounts.service';
 import { CreateAccountDto } from 'src/accounts/dto/create-account.dto';
 import { LoggingService } from 'src/logging/logging.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationMessages } from 'src/notifications/notification_messages/notification-messages';
+import { SendEmailDto } from 'src/notifications/dto/send-email.dto';
 
 
 @Injectable()
@@ -16,6 +19,7 @@ export class UsersService {
     @Inject(forwardRef(() => AccountsService)) // ✅ Fix circular dependency
     private readonly accountsService: AccountsService,
     private readonly loggingService: LoggingService,
+    private readonly notificationsService: NotificationsService,
 
   ) {}
 
@@ -61,6 +65,13 @@ export class UsersService {
 
     this.users.push(newUser);
     this.loggingService.log(`User created successfully: ${email}`, 'UsersService');
+
+    const emailContent = NotificationMessages.userCreated(name, email);
+    const welcomeEmail = new SendEmailDto();
+    welcomeEmail.to = email;
+    welcomeEmail.subject = emailContent.subject;
+    welcomeEmail.body = emailContent.body;
+    await this.notificationsService.sendEmail(welcomeEmail);
 
     // Automatically create an account for customers
     if (role === 'customer') {

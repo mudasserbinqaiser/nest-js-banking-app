@@ -4,6 +4,10 @@ import { AccountsService } from '../accounts/accounts.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionResponseDto } from './dto/transaction-response.dto';
 import { LoggingService } from 'src/logging/logging.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationMessages } from 'src/notifications/notification_messages/notification-messages';
+import { SendEmailDto } from 'src/notifications/dto/send-email.dto';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class TransactionsService {
@@ -13,6 +17,9 @@ export class TransactionsService {
     @Inject(forwardRef(() => AccountsService)) // Inject AccountsService to access accounts
     private readonly accountsService: AccountsService,
     private readonly loggingService: LoggingService,
+    private readonly notificationsService: NotificationsService,
+    private readonly usersService: UsersService,
+    
 
   ) {}
 
@@ -76,6 +83,26 @@ export class TransactionsService {
         'TransactionsService',
       );
 
+      const sender = await this.usersService.findById(fromAccount.userId);
+      if (sender) {
+        const emailContentSender = NotificationMessages.transactionCompleted(amount, fromAccount.accountNumber, toAccount.accountNumber);
+        const transactionSentEmail = new SendEmailDto();
+        transactionSentEmail.to = sender.email;
+        transactionSentEmail.subject = emailContentSender.subject;
+        transactionSentEmail.body = emailContentSender.body;
+        await this.notificationsService.sendEmail(transactionSentEmail);
+      }
+
+      const receiver = await this.usersService.findById(toAccount.userId);
+      if (receiver) {
+        const emailContentReceiver = NotificationMessages.transactionCompleted(amount, fromAccount.accountNumber, toAccount.accountNumber);
+        const transactionReceivedEmail = new SendEmailDto();
+        transactionReceivedEmail.to = receiver.email;
+        transactionReceivedEmail.subject = emailContentReceiver.subject;
+        transactionReceivedEmail.body = emailContentReceiver.body;
+        await this.notificationsService.sendEmail(transactionReceivedEmail);
+  
+      }
       return this.toTransactionResponseDto(newTransaction);
     } catch (error) {
       throw new InternalServerErrorException(error.message || 'An error occurred during the transaction');

@@ -3,6 +3,9 @@ import { UsersService } from 'src/users/users.service';
 import { AccountsService } from 'src/accounts/accounts.service';
 import { TransactionsService } from 'src/transactions/transactions.service';
 import { LoggingService } from 'src/logging/logging.service';
+import { NotificationMessages } from 'src/notifications/notification_messages/notification-messages';
+import { SendEmailDto } from 'src/notifications/dto/send-email.dto';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class AdminService {
@@ -14,6 +17,7 @@ export class AdminService {
     private readonly accountsService: AccountsService,
     @Inject(forwardRef(() => TransactionsService))
     private readonly transactionsService: TransactionsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async banUser(userId: number) {
@@ -27,6 +31,14 @@ export class AdminService {
 
       user.isBanned = true;
       this.loggingService.log(`User ${userId} has been banned successfully`, 'AdminService');
+
+      const emailContent = NotificationMessages.userBanned(user.email);
+      const userBannedEmail = new SendEmailDto();
+      userBannedEmail.to = user.email;
+      userBannedEmail.subject = emailContent.subject;
+      userBannedEmail.body = emailContent.body;
+      await this.notificationsService.sendEmail(userBannedEmail);
+
       return { message: `User ${userId} has been banned` };
     } catch (error) {
       this.loggingService.error(`Error banning user: ${error.message}`, error.stack, 'AdminService');
@@ -45,7 +57,18 @@ export class AdminService {
 
       account.isSuspended = true;
       this.loggingService.log(`Account ${accountId} has been suspended successfully`, 'AdminService');
-      return { message: `Account ${accountId} has been suspended` };
+
+      const user = await this.usersService.findById(account.userId);
+      if (user) {
+        const emailContent = NotificationMessages.accountSuspended(account.accountNumber);
+        const accountSuspendedEmail = new SendEmailDto();
+        accountSuspendedEmail.to = user.email;
+        accountSuspendedEmail.subject = emailContent.subject;
+        accountSuspendedEmail.body = emailContent.body;
+        await this.notificationsService.sendEmail(accountSuspendedEmail);
+      }
+
+      return { message: `The Account ${accountId} has been suspended` };
     } catch (error) {
       this.loggingService.error(`Error suspending account: ${error.message}`, error.stack, 'AdminService');
       throw new InternalServerErrorException(error.message || 'An error occurred while suspending the account');

@@ -5,6 +5,7 @@ import { UsersModule } from 'src/users/users.module';
 import { AccountsModule } from 'src/accounts/accounts.module';
 import { TransactionsModule } from 'src/transactions/transactions.module';
 import { LoggingModule } from 'src/logging/logging.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { LoggingModule } from 'src/logging/logging.module';
     forwardRef(() => AccountsModule),
     forwardRef(() => TransactionsModule),
     LoggingModule,
+    NotificationsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

@@ -4,6 +4,9 @@ import { UsersService } from 'src/users/users.service';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { AddFundsDto } from './dto/add-funds.dto';
 import { LoggingService } from 'src/logging/logging.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationMessages } from 'src/notifications/notification_messages/notification-messages';
+import { SendEmailDto } from 'src/notifications/dto/send-email.dto';
 
 @Injectable()
 export class AccountsService {
@@ -13,6 +16,8 @@ export class AccountsService {
     @Inject(forwardRef(() => UsersService)) // ✅ Fix circular dependency
     private readonly usersService: UsersService,
     private readonly loggingService: LoggingService,
+    private readonly notificationsService: NotificationsService,
+
   ) {}
 
   async createAccount(createAccountDto: CreateAccountDto): Promise<Account> {
@@ -45,6 +50,14 @@ export class AccountsService {
       };
       this.accounts.push(newAccount);
       this.loggingService.log(`Account created successfully for user ${userId}`, 'AccountsService');
+
+      const emailContent = NotificationMessages.accountCreated(newAccount.accountNumber, user.email);
+      const accountCreatedEmail = new SendEmailDto();
+      accountCreatedEmail.to = user.email;
+      accountCreatedEmail.subject = emailContent.subject;
+      accountCreatedEmail.body = emailContent.body;
+      await this.notificationsService.sendEmail(accountCreatedEmail);
+
       return newAccount;
     } catch (error) {
       this.loggingService.error(`Error creating account: ${error.message}`, error.stack, 'AccountsService');
@@ -87,6 +100,13 @@ export class AccountsService {
     // Add funds to the account balance
     account.balance += amount;
     this.loggingService.log(`Successfully added ${amount} to account ${account.id}`, 'AccountsService');
+
+    const emailContent = NotificationMessages.fundsAdded(amount, account.accountNumber);
+    const fundsAddedEmail = new SendEmailDto();
+    fundsAddedEmail.to = user.email;
+    fundsAddedEmail.subject = emailContent.subject;
+    fundsAddedEmail.body = emailContent.body;
+    await this.notificationsService.sendEmail(fundsAddedEmail);
 
     return account;
   }

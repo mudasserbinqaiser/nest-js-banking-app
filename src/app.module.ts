@@ -10,6 +10,7 @@ import { SecurityModule } from './security/security.module';
 import { ValidationModule } from './validation/validation.module';
 import { LoggingModule } from './logging/logging.module';
 import { AdminModule } from './admin/admin.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { AdminModule } from './admin/admin.module';
     ValidationModule,
     LoggingModule,
     AdminModule,
+    NotificationsModule,
 ],
   controllers: [AppController],
   providers: [AppService],
