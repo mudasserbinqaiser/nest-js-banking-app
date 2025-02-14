@@ -5,7 +5,8 @@ import {
   IsString, 
   MinLength, 
   MaxLength, 
-  Matches 
+  Matches, 
+  IsOptional
 } from "class-validator";
 import { SanitizeStringPipe } from "src/validation/pipes/sanitize-string.pipe";
 
@@ -28,4 +29,9 @@ export class SendEmailDto {
     @MaxLength(5000, { message: "Body cannot exceed 5000 characters" })
     @Transform(({ value }) => new SanitizeStringPipe().transform(value))
     body: string;
+
+    @IsOptional()
+    @IsString({ message: "Attachment path must be a string" })
+    @Transform(({ value }) => new SanitizeStringPipe().transform(value))
+    attachment?: string;
 }

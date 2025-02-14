@@ -32,6 +32,26 @@ export const NotificationMessages = {
     adminAlert: (message: string) => ({
       subject: "⚠️ Urgent Admin Notification",
       body: `Admin Alert:\n\n${message}`
-    })
-  };
+    }),
+
+    reportGenerated: (format: string, filePath: string) => ({
+      subject: `Your ${format.toUpperCase()} Report is Ready`,
+      body: `Dear Customer,\n\nYour requested ${format.toUpperCase()} report has been generated successfully.\n\nYou can download it from: ${filePath}.\n\nBest Regards,\nBank Team`
+  }),
+
+  passwordReset: (email: string, resetLink: string) => ({
+      subject: "Password Reset Request",
+      body: `Dear User,\n\nA request has been made to reset your password for the account associated with ${email}.\n\nClick the link below to reset your password:\n\n${resetLink}\n\nIf you did not request this, please ignore this email.\n\nBest Regards,\nBank Security Team`
+  }),
+
+  loginAlert: (email: string, ipAddress: string) => ({
+      subject: "New Login Alert",
+      body: `Dear User,\n\nYour account (${email}) was accessed from a new device or location.\n\nIP Address: ${ipAddress}\n\nIf this was not you, please secure your account immediately.\n\nBest Regards,\nBank Security Team`
+  }),
+
+  monthlyStatement: (name: string) => ({
+    subject: "Your Monthly Account Statement",
+    body:`Dear ${name},\n\nYour monthly account statement is now available. Please find the attached document.\n\nBest Regards,\nBank Team`,
+  }),
+};
   
