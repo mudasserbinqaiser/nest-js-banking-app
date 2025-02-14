@@ -9,6 +9,10 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { SecurityModule } from './security/security.module';
 import { ValidationModule } from './validation/validation.module';
 import { LoggingModule } from './logging/logging.module';
+import { AdminModule } from './admin/admin.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ReportingModule } from './reporting/reporting.module';
+import { StatementsModule } from './statements/statements.module';
 
 @Module({
   imports: [
@@ -22,6 +26,10 @@ import { LoggingModule } from './logging/logging.module';
     SecurityModule,
     ValidationModule,
     LoggingModule,
+    AdminModule,
+    NotificationsModule,
+    ReportingModule,
+    StatementsModule,
 ],
   controllers: [AppController],
   providers: [AppService],

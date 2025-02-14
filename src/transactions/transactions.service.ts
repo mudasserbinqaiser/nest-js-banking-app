@@ -4,6 +4,10 @@ import { AccountsService } from '../accounts/accounts.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { TransactionResponseDto } from './dto/transaction-response.dto';
 import { LoggingService } from 'src/logging/logging.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationMessages } from 'src/notifications/notification_messages/notification-messages';
+import { SendEmailDto } from 'src/notifications/dto/send-email.dto';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class TransactionsService {
@@ -13,6 +17,9 @@ export class TransactionsService {
     @Inject(forwardRef(() => AccountsService)) // Inject AccountsService to access accounts
     private readonly accountsService: AccountsService,
     private readonly loggingService: LoggingService,
+    private readonly notificationsService: NotificationsService,
+    private readonly usersService: UsersService,
+    
 
   ) {}
 
@@ -36,6 +43,16 @@ export class TransactionsService {
       if (!fromAccount || !toAccount) {
         this.loggingService.warn(`Invalid account(s) involved in transfer`, 'TransactionsService');
         throw new NotFoundException('One or both accounts not found');
+      }
+
+      if (fromAccount.isSuspended) {
+        this.loggingService.warn(`Suspended account ${fromAccountId} attempted a transfer`, 'TransactionsService');
+        throw new BadRequestException('Sender account is suspended');
+      }
+
+      if (toAccount.isSuspended) {
+        this.loggingService.warn(`Transfer to a suspended account ${toAccountId} attempted`, 'TransactionsService');
+        throw new BadRequestException('Recipient account is suspended');
       }
 
       if (fromAccount.balance < amount) {
@@ -66,6 +83,26 @@ export class TransactionsService {
         'TransactionsService',
       );
 
+      const sender = await this.usersService.findById(fromAccount.userId);
+      if (sender) {
+        const emailContentSender = NotificationMessages.transactionCompleted(amount, fromAccount.accountNumber, toAccount.accountNumber);
+        const transactionSentEmail = new SendEmailDto();
+        transactionSentEmail.to = sender.email;
+        transactionSentEmail.subject = emailContentSender.subject;
+        transactionSentEmail.body = emailContentSender.body;
+        await this.notificationsService.sendEmail(transactionSentEmail);
+      }
+
+      const receiver = await this.usersService.findById(toAccount.userId);
+      if (receiver) {
+        const emailContentReceiver = NotificationMessages.transactionCompleted(amount, fromAccount.accountNumber, toAccount.accountNumber);
+        const transactionReceivedEmail = new SendEmailDto();
+        transactionReceivedEmail.to = receiver.email;
+        transactionReceivedEmail.subject = emailContentReceiver.subject;
+        transactionReceivedEmail.body = emailContentReceiver.body;
+        await this.notificationsService.sendEmail(transactionReceivedEmail);
+  
+      }
       return this.toTransactionResponseDto(newTransaction);
     } catch (error) {
       throw new InternalServerErrorException(error.message || 'An error occurred during the transaction');
@@ -89,6 +126,23 @@ export class TransactionsService {
       throw new InternalServerErrorException(error.message || 'An error occurred during the transaction');
     }
   }
+
+  async getAllTransactions(): Promise<TransactionResponseDto[]> {
+    try {
+      this.loggingService.log('Fetching all transactions', 'TransactionsService');
+  
+      if (this.transactions.length === 0) {
+        this.loggingService.warn('No transactions found', 'TransactionsService');
+        throw new NotFoundException('No transactions found');
+      }
+  
+      return this.transactions.map((tx) => this.toTransactionResponseDto(tx));
+    } catch (error) {
+      this.loggingService.error(`Error fetching transactions: ${error.message}`, error.stack, 'TransactionsService');
+      throw new InternalServerErrorException('An error occurred while fetching transactions');
+    }
+  }
+  
 
   private toTransactionResponseDto(transaction: Transaction): TransactionResponseDto {
     return {

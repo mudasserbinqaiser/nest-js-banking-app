@@ -4,5 +4,6 @@ export class Account {
     balance: number;
     type: 'savings' | 'checking' | 'business';
     userId: number;
+    isSuspended?: boolean;
   }
   
